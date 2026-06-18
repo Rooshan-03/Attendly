@@ -36,12 +36,6 @@
       }
     },
     "plugins": [
-      [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#1a1f36"
-        }
-      ],
       "expo-font",
       "expo-sharing"
     ],
