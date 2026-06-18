@@ -22,6 +22,8 @@
     },
     "owner": "shani_03",
     "splash": {
+      "image": "./assets/AppIcon.png",
+      "resizeMode": "contain",
       "backgroundColor": "#1a1f36"
     },
     "androidStatusBar": {
