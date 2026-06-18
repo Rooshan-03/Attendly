@@ -4,6 +4,9 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { PaperProvider } from 'react-native-paper';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Provider } from 'react-redux';
+import store from './store/store';
 import Login from 'components/Login';
 import Signup from 'components/Signup';
 import './global.css';
@@ -13,15 +16,15 @@ import ClassData from 'components/ClassData';
 import StudentsData from 'components/StudentsData';
 import MarkAttendance from 'components/MarkAttendance';
 import ShowAttendance from 'components/ShowAttendance';
-import ProfileScreen from 'components/ProfileScreen'; 
-import SettingsScreen from 'components/SettingsScreen'; 
+import ProfileScreen from 'components/ProfileScreen';
+
 import CustomDrawerContent from 'components/CustomDrawerContent';
 
 const Drawer = createDrawerNavigator();
 
 function HomeDrawerNavigator() {
   return (
-    <Drawer.Navigator 
+    <Drawer.Navigator
       initialRouteName="Home"
       // Use the custom component for the drawer content
       drawerContent={(props) => <CustomDrawerContent {...props} />}
@@ -30,18 +33,14 @@ function HomeDrawerNavigator() {
       <Drawer.Screen
         name="Home"
         component={Home}
-        options={{ title: 'Home' }}
+        options={{ title: 'Home', headerShown: false }}
       />
       <Drawer.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{ title: 'Profile' }}
+        options={{ title: 'Profile', headerShown: false }}
       />
-      <Drawer.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{ title: 'Settings' }}
-      />
+
     </Drawer.Navigator>
   );
 }
@@ -52,67 +51,60 @@ const Stack = createNativeStackNavigator();
 
 export default function App() {
   return (
-    <PaperProvider>
-      <NavigationContainer>
-        <Stack.Navigator initialRouteName="SplashScreen">
-          <Stack.Screen
-            name="Login"
-            component={Login}
-            options={{ title: 'Login', headerShown: false }}
-          />
-          <Stack.Screen
-            name="SplashScreen"
-            component={SplashScreen}
-            options={{ title: 'SplashScreen', headerShown: false }}
-          />
-          <Stack.Screen
-            name="Signup"
-            component={Signup}
-            options={{ title: 'Signup', headerShown: false }}
-          />
-          
-          {/* 
-            The 'HomeDrawer' screen is the entry point to the main application flow.
-            It is a Stack Screen that holds the Drawer Navigator.
-          */}
-          <Stack.Screen
-            name='HomeDrawer' 
-            component={HomeDrawerNavigator}
-            options={{ headerShown: false }} 
-          />
+    <Provider store={store}>
+      <SafeAreaProvider>
+        <PaperProvider>
+          <NavigationContainer>
+            <Stack.Navigator initialRouteName="SplashScreen">
+              <Stack.Screen
+                name="Login"
+                component={Login}
+                options={{ title: 'Login', headerShown: false }}
+              />
+              <Stack.Screen
+                name="SplashScreen"
+                component={SplashScreen}
+                options={{ title: 'SplashScreen', headerShown: false }}
+              />
+              <Stack.Screen
+                name="Signup"
+                component={Signup}
+                options={{ title: 'Signup', headerShown: false }}
+              />
 
-          {/* 
-            All other main application screens are kept in the Stack Navigator, 
-            as they should not have the side drawer.
-          */}
-          <Stack.Screen
-            name='ClassData'
-            component={ClassData}
-            options={{ headerBackVisible: false }}
-          />
-          <Stack.Screen
-            name='StudentsData'
-            component={StudentsData}
-            options={{ headerBackVisible: false }}
-          />
-          <Stack.Screen
-            name='MarkAttendance'
-            component={MarkAttendance}
-            options={{ title: 'Mark Attendance', headerBackVisible: false }}
-          />
-          <Stack.Screen
-            name='ShowAttendance'
-            component={ShowAttendance}
-            options={{ headerBackVisible: false }}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </PaperProvider>
+              {/* 
+              The 'HomeDrawer' screen is the entry point to the main application flow.
+              It is a Stack Screen that holds the Drawer Navigator.
+            */}
+              <Stack.Screen
+                name='HomeDrawer'
+                component={HomeDrawerNavigator}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name='ClassData'
+                component={ClassData}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name='StudentsData'
+                component={StudentsData}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name='MarkAttendance'
+                component={MarkAttendance}
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name='ShowAttendance'
+                component={ShowAttendance}
+                options={{ headerShown: false }}
+              />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </PaperProvider>
+      </SafeAreaProvider>
+    </Provider>
   );
 }
-
-
-
-//git add .
-// git commit -m "Updated login screen"
-// git push

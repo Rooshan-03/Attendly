@@ -1,8 +1,10 @@
-import { View, Text, FlatList, TouchableOpacity, SafeAreaView, ActivityIndicator, Alert } from 'react-native'
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import React, { useCallback, useMemo, useState } from 'react'
-import { get, getDatabase, ref, update } from 'firebase/database';
 import { useFocusEffect, useRoute } from '@react-navigation/native'
 import { auth } from '../firebase.config.js';
+import { getClassName, getStudents } from '../apiServices/studentService';
+import { getAttendance, submitAttendance } from '../apiServices/attendanceService';
 import RadioButton from './RadioButton'
 import { Ionicons } from '@expo/vector-icons';
 
@@ -13,8 +15,8 @@ const MarkAttendance = ({ navigation }) => {
     //getting id and subject name using props from StudentsData Screen
     const { classId, subjectId, subjectName } = useRoute().params
 
-    const db = getDatabase()
     const uid = auth.currentUser.uid
+
     useFocusEffect(
         useCallback(() => {
             const fetchData = async () => {
@@ -22,25 +24,16 @@ const MarkAttendance = ({ navigation }) => {
                     if (!uid) {
                         return
                     }
-                    const subjectSnapshot = await get(ref(db, `Users/${uid}/Classes/${classId}`));
-                    if (subjectSnapshot.exists()) {
+                    const fetchedClassName = await getClassName(uid, classId);
+                    setClassName(fetchedClassName);
 
-                        setClassName(subjectSnapshot.val().className);
-
-                    }
-
-                    const snapshot = await get(ref(db, `Users/${uid}/Classes/${classId}/Subjects/${subjectId}/Students`))
-                    if (snapshot.exists()) {
-                        const data = snapshot.val()
-
-                        const list = Object.entries(data).map(([key, val]) => ({
-                            id: key,
-                            ...val,
-                            Attendance: "P"
-                        }))
-                        setStudents(list)
-                        setLoading(false)
-                    }
+                    const studentsArray = await getStudents(uid, classId, subjectId);
+                    const list = studentsArray.map(s => ({
+                        ...s,
+                        Attendance: "P"
+                    }));
+                    setStudents(list);
+                    setLoading(false);
                 } catch (error) {
                     Alert.alert("Error", "Something Went Wrong!")
                 }
@@ -48,12 +41,12 @@ const MarkAttendance = ({ navigation }) => {
             fetchData()
         }, [])
     );
+
     const updateStatus = useCallback((studentId, value) => {
         setStudents(prev =>
             prev.map(s => s.id === studentId ? { ...s, Attendance: value } : s)
         );
     }, []);
-
 
     const showDialog = () => {
         Alert.alert(
@@ -61,11 +54,12 @@ const MarkAttendance = ({ navigation }) => {
             "Are you sure you want to Submit Attendance?",
             [
                 { text: "No", style: "cancel" },
-                { text: "Yes", onPress: () => submitAttendance() }
+                { text: "Yes", onPress: () => handleSubmitAttendance() }
             ],
             { cancelable: true }
         );
     };
+
     const getReadableDate = () => {
         const d = new Date();
         const day = String(d.getDate()).padStart(2, '0');
@@ -73,45 +67,7 @@ const MarkAttendance = ({ navigation }) => {
         const year = d.getFullYear();
         return `${day}-${month}-${year}`;
     };
-    const submitAttendance = async () => {
-        setLoading(true);
-        const db = getDatabase();
-        const Date = getReadableDate();
-        const todayRef = ref(db, `Users/${uid}/Classes/${classId}/Subjects/${subjectId}/Attendance/${Date}`)
-        const snapshot = await get(todayRef)
-        if (snapshot.exists()) {
-            setLoading(false)
-            alert(`Attendance Taken For ${Date}`)
-            navigation.navigate('ShowAttendance', { uid, subjectId, classId })
-            return
-        }
-        const updates = {};
-        let checkMissingStudents = students.some(s => s.Attendance == null);
-        if (checkMissingStudents) {
-            setLoading(false)
-            Alert.alert("Error", "Please Mark Attendance for All students")
-            return;
-        }
-        students.forEach(student => {
-            updates[`Users/${uid}/Classes/${classId}/Subjects/${subjectId}/Attendance/${Date}/${student.id}`] = {
-                name: student.Name,
-                rollNo: student.RollNo,
-                Attendance: student.Attendance
-            };
-        });
 
-        try {
-
-            await update(ref(db), updates);
-            setLoading(false)
-            alert('Attendance marked successfully!');
-            navigation.navigate('ShowAttendance', { uid, subjectId, classId })
-        } catch (error) {
-            setLoading(false)
-            console.error("Error marking attendance:", error);
-            alert('Failed to mark attendance.');
-        }
-    };
     const getFormattedTime = () => {
         const now = new Date();
         let hours = now.getHours();
@@ -121,10 +77,41 @@ const MarkAttendance = ({ navigation }) => {
         const mins = minutes < 10 ? `0${minutes}` : minutes;
         return `${hours}:${mins} ${ampm}`;
     }
+
+    const handleSubmitAttendance = async () => {
+        setLoading(true);
+        const Date = getReadableDate();
+
+        const existingAttendance = await getAttendance(uid, classId, subjectId, Date);
+        if (existingAttendance) {
+            setLoading(false)
+            alert(`Attendance Taken For ${Date}`)
+            navigation.navigate('ShowAttendance', { subjectId, classId })
+            return
+        }
+
+        let checkMissingStudents = students.some(s => s.Attendance == null);
+        if (checkMissingStudents) {
+            setLoading(false)
+            Alert.alert("Error", "Please Mark Attendance for All students")
+            return;
+        }
+
+        try {
+            await submitAttendance(uid, classId, subjectId, Date, students);
+            setLoading(false)
+            alert('Attendance marked successfully!');
+            navigation.navigate('ShowAttendance', { subjectId, classId })
+        } catch (error) {
+            setLoading(false)
+            console.error("Error marking attendance:", error);
+            alert('Failed to mark attendance.');
+        }
+    };
+
     const present = React.useMemo(() => students.filter(s => s.Attendance === "P").length, [students]);
     const Absent = React.useMemo(() => students.filter(s => s.Attendance === "A").length, [students]);
     const Leave = React.useMemo(() => students.filter(s => s.Attendance === "L").length, [students]);
-
 
     const RenderItem = useMemo(() => {
         const Item = React.memo(({ item, number }) => {
@@ -132,7 +119,7 @@ const MarkAttendance = ({ navigation }) => {
             const onA = () => updateStatus(item.id, "A");
             const onL = () => updateStatus(item.id, "L");
             return (
-                <View className="w-full bg-white p-2 flex-row" style={{ borderBottomWidth: 0.3 }}>
+                <View className="w-full bg-white p-2 flex-row border-b-[0.3px] border-slate-200">
                     <View className=" p-2  mr-4">
                         <Text>{number + 1}</Text>
                     </View>
@@ -171,13 +158,32 @@ const MarkAttendance = ({ navigation }) => {
         })
         return Item;
     }, [updateStatus])
+
     return (
-        loading ? (
-            <View className='flex-1 justify-center items-center'>
-                <ActivityIndicator size="large" />
+        <SafeAreaView className='flex-1 bg-slate-50'>
+            {/* Custom Header */}
+            <View className="bg-[#1a1f36] flex-row items-center justify-between px-4 pt-4 pb-5 rounded-b-[24px] mb-2">
+                <TouchableOpacity
+                    onPress={() => navigation.goBack()}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    className="w-[38px] h-[38px] rounded-[10px] bg-white/10 items-center justify-center"
+                >
+                    <Ionicons name="arrow-back" size={22} color="#fff" />
+                </TouchableOpacity>
+
+                <Text className="text-[18px] font-bold text-white tracking-[0.3px]">
+                    Mark Attendance
+                </Text>
+
+                <View className="w-[38px]" />
             </View>
-        ) : (
-            <View className="flex-1 items-center">
+
+            {loading ? (
+                <View className='flex-1 justify-center items-center'>
+                    <ActivityIndicator size="large" />
+                </View>
+            ) : (
+                <View className="flex-1 items-center">
                 {/* Top View for Details */}
                 <View className='w-[95%] flex flex-col mt-2 p-2 rounded-md border border-blue-200 bg-blue-200/90 '>
                     {/* First row(Class Name and subjectName) */}
@@ -191,7 +197,7 @@ const MarkAttendance = ({ navigation }) => {
                             <Text className='text-xs text-blue-700 font-bold'>{subjectName}</Text>
                         </View>
                     </View>
-                    {/* 2nd row time anda date */}
+                    {/* 2nd row time and date */}
                     <View className='flex flex-row justify-between mx-5'>
                         <View className='flex flex-row px-3 m-2'>
                             <Ionicons name='today-outline' className='mx-1' color={'#2563EB'} size={12} />
@@ -221,7 +227,7 @@ const MarkAttendance = ({ navigation }) => {
                             <Text className='text-xs pl-1'>{Absent}</Text>
                         </View>
                     </View>
-                    {/* Students On loave */}
+                    {/* Students On leave */}
                     <View className='w-[30%] m-2 h-20 bg-white rounded-lg p-3'>
                         <Text className='font-semibold text-gray-500 '>Leave</Text>
                         <View className='mt-3 flex flex-row'>
@@ -243,7 +249,7 @@ const MarkAttendance = ({ navigation }) => {
                             />
                         )
                         }
-                        
+
                     />
                 </View>
                 <View className='bg-white w-full h-28 absolute bottom-0 '>
@@ -255,7 +261,8 @@ const MarkAttendance = ({ navigation }) => {
                     </TouchableOpacity>
                 </View>
             </View>
-        )
+            )}
+        </SafeAreaView>
     )
 }
 

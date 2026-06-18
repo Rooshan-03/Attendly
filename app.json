@@ -6,11 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/AppIcon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/AppIcon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -26,13 +21,27 @@
       "package": "com.rooshan.attendly"
     },
     "owner": "shani_03",
+    "splash": {
+      "backgroundColor": "#1a1f36"
+    },
+    "androidStatusBar": {
+      "backgroundColor": "#1a1f36",
+      "barStyle": "light-content"
+    },
     "extra": {
       "eas": {
         "projectId": "e5524f68-7b0a-4c89-a1f6-86b17b4bc745"
       }
     },
     "plugins": [
-      "expo-font"
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#1a1f36"
+        }
+      ],
+      "expo-font",
+      "expo-sharing"
     ],
     "experiments": {
       "tsconfigPaths": true

@@ -1,9 +1,39 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
-import { View, Text, FlatList, Modal, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, FlatList, Modal, TextInput, TouchableOpacity, ActivityIndicator, Alert, Dimensions, StatusBar } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { auth } from '../firebase.config.js';
-import { getDatabase, ref, push, set, get, update, remove } from 'firebase/database';
+import { getClasses, addClass, updateClass, deleteClass } from '../apiServices/classService';
 import { Ionicons } from '@expo/vector-icons';
 import { Menu } from 'react-native-paper';
+import { useSelector } from 'react-redux';
+
+const { width } = Dimensions.get('window');
+const CARD_MARGIN = 8;
+const NUM_COLUMNS = 2;
+const CARD_WIDTH = (width - CARD_MARGIN * (NUM_COLUMNS + 1) * 2) / NUM_COLUMNS;
+
+const getInitials = (name) => {
+    if (!name) return '?';
+    const words = name.trim().split(/\s+/);
+    if (words.length === 1) {
+        return words[0].substring(0, 2).toUpperCase();
+    }
+    return (words[0][0] + words[1][0]).toUpperCase();
+};
+
+const AVATAR_COLORS = [
+    '#4F86C6', '#5BAD6F', '#C4774B', '#9B6DC5',
+    '#C45B7B', '#4BADC4', '#C4B44B', '#6B9E6B',
+];
+
+const getAvatarColor = (name) => {
+    if (!name) return AVATAR_COLORS[0];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+};
 
 const Home = ({ navigation }) => {
     const [modalVisible, setModalVisible] = useState(false);
@@ -16,18 +46,15 @@ const Home = ({ navigation }) => {
     const [updateClassName, setUpdateClassName] = useState('')
     const [updateModalVisible, setUpdateModalVisible] = useState(false)
     const [classItemId, setClassItemId] = useState('')
-    const db = getDatabase();
+
+    const storedUser = useSelector(state => state.app.user);
 
     const openItemMenu = (id) => setSelectedItemId(id)
     const closeItemMenu = () => setSelectedItemId(null)
+
     useLayoutEffect(() => {
         navigation.setOptions({
-            headerTitle: "Classes",
-            headerRight: () => (
-                <TouchableOpacity className='mr-4' onPress={() => setModalVisible(true)}>
-                    <Ionicons name='add' size={25} color={'#000'} />
-                </TouchableOpacity>
-            )
+            headerShown: false,
         });
     }, [navigation]);
 
@@ -37,22 +64,13 @@ const Home = ({ navigation }) => {
             return;
         }
         const fetchClasses = async () => {
-            const classesRef = ref(db, `Users/${uid}/Classes`);
-            const snapshot = await get(classesRef)
-            if (snapshot.exists()) {
-                const classesArray = Object.entries(snapshot.val()).map(([key, value]) => ({
-                    id: key,
-                    ...value,
-                }))
-                setLoadingClasses(false)
-                setClasses(classesArray);
-            } else {
-                setLoadingClasses(false)
-                setClasses([]);
-            }
+            const classesArray = await getClasses(uid);
+            setLoadingClasses(false);
+            setClasses(classesArray);
         }
-        fetchClasses()
+        fetchClasses();
     }, [])
+
     const handleSubmit = async () => {
         if (!className.trim()) {
             alert('Please enter a class name');
@@ -67,12 +85,11 @@ const Home = ({ navigation }) => {
             }
             const uid = auth.currentUser?.uid;
             if (!uid) return;
-            const db = getDatabase();
-            const newClassRef = push(ref(db, `Users/${uid}/Classes`));
-            const newClassData = { className };
-            await set(newClassRef, newClassData);
 
-            setClasses(prev => [...prev, { id: newClassRef.key, ...newClassData }]);
+            const newClassData = { className };
+            const newId = await addClass(uid, className);
+
+            setClasses(prev => [...prev, { id: newId, ...newClassData }]);
             setClassName('');
         } catch (error) {
             Alert.alert('Error', 'Error Adding Class')
@@ -81,76 +98,104 @@ const Home = ({ navigation }) => {
             setLoadingAddMore(false);
         }
     };
-    const updateClass = async () => {
+
+    const handleUpdateClass = async () => {
         setClassItemId(selectedItemId)
         closeItemMenu()
         setUpdateModalVisible(true)
     }
-    const deleteClass = async (classId) => {
+
+    const deleteClassItem = async (classId) => {
         Alert.alert('Warning',
             'Are You sure you want to delete this Class?',
             [
                 {
                     text: 'Cancel',
-                    style: 'cancel'
-
+                    style: 'cancel',
                 },
                 {
                     text: 'Ok',
                     onPress: async () => {
-                        const uid = auth.currentUser.uid
-                        const deleteRef = ref(db, `Users/${uid}/Classes/${classId}`)
-                        await remove(deleteRef)
+                        const uid = auth.currentUser.uid;
+                        await deleteClass(uid, classId);
                         setClasses(prev => prev.filter(c => c.id !== classId));
                     }
                 }
             ]
         )
-
     }
-    const RenderClass = ({ item, index }) => (
 
-        <TouchableOpacity
-            className="bg-white rounded-lg p-4 mx-4 my-1 flex-row justify-between items-center"
-            onPress={() => navigation.navigate('ClassData', { className: item.className, classId: item.id })}
-        >
-            <View className="flex-row items-center">
-                <Text className="font-bold text-slate-500">{index + 1}</Text>
-                <Text className="text-base font-sans ml-2">{item.className}</Text>
-            </View>
+    const RenderClass = ({ item }) => {
+        const initials = getInitials(item.className);
+        const avatarColor = getAvatarColor(item.className);
 
-            <Menu
-                visible={selectedItemId == item.id}
-                onDismiss={closeItemMenu}
-                anchor={
-                    <TouchableOpacity onPress={() => openItemMenu(item.id)} className='w-12 h-7 pl-4'>
-                        <Ionicons name="ellipsis-vertical" size={18} color="grey" />
-                    </TouchableOpacity>
-                }
+        return (
+            <TouchableOpacity
+                className="bg-white rounded-[14px] p-3.5 min-h-[120px] shadow-sm shadow-black/10 elevation-2"
+                style={{ width: CARD_WIDTH, margin: CARD_MARGIN }}
+                onPress={() => navigation.navigate('ClassData', { className: item.className, classId: item.id })}
+                activeOpacity={0.85}
             >
-                <Menu.Item title='Update' onPress={() => updateClass()} />
-                <Menu.Item title='Delete' onPress={() => deleteClass(item.id)} />
-            </Menu>
-        </TouchableOpacity>
-    );
+                {/* Three-dot menu — top-right corner */}
+                <View className="absolute top-1.5 right-1 z-10">
+                    <Menu
+                        visible={selectedItemId === item.id}
+                        onDismiss={closeItemMenu}
+                        anchor={
+                            <TouchableOpacity
+                                onPress={() => openItemMenu(item.id)}
+                                className="p-1.5"
+                                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                            >
+                                <Ionicons name="ellipsis-vertical" size={16} color="grey" />
+                            </TouchableOpacity>
+                        }
+                    >
+                        <Menu.Item title='Update' onPress={() => handleUpdateClass()} />
+                        <Menu.Item title='Delete' onPress={() => deleteClassItem(item.id)} />
+                    </Menu>
+                </View>
+
+                {/* Initials circle */}
+                <View
+                    className="w-[52px] h-[52px] rounded-full items-center justify-center mb-2.5 mt-1"
+                    style={{ backgroundColor: avatarColor }}
+                >
+                    <Text className="text-white font-bold text-[17px] tracking-[0.5px]">
+                        {initials}
+                    </Text>
+                </View>
+
+                {/* Class name */}
+                <Text
+                    className="text-sm font-semibold text-slate-800"
+                    numberOfLines={2}
+                >
+                    {item.className}
+                </Text>
+            </TouchableOpacity>
+        );
+    };
+
     const handleUpdateSubmit = async () => {
         if (!updateClassName.trim()) {
             alert('Please Enter Class Name')
             return;
         }
-        const uid = auth.currentUser.uid
-        const updateRef = ref(db, `Users/${uid}/Classes/${classItemId}`)
-        await update(updateRef, { className: updateClassName })
+        const uid = auth.currentUser.uid;
+        await updateClass(uid, classItemId, updateClassName);
         setClasses(prev =>
-            prev.map(c => c.id === selectedItemId ? { ...c, className: updateClassName } : c)
+            prev.map(c => c.id === classItemId ? { ...c, className: updateClassName } : c)
         )
         closeItemMenu()
         setUpdateModalVisible(false)
         setUpdateClassName('')
         setUpdateModalVisible(false)
     }
+
     return (
-        <View className="flex-1">
+        <SafeAreaView className="flex-1 bg-slate-50">
+            <StatusBar barStyle="light-content" backgroundColor="#1a1f36" />
             <Modal
                 animationType="slide"
                 transparent
@@ -240,6 +285,46 @@ const Home = ({ navigation }) => {
                     </View>
                 </View>
             </Modal>
+
+            {/* Custom branded top bar */}
+            <View className="bg-[#1a1f36] px-4 pt-4 pb-5 rounded-b-[24px]">
+                {/* Row: hamburger + greeting + add button */}
+                <View className="flex-row items-center justify-between">
+                    {/* Hamburger */}
+                    <TouchableOpacity
+                        onPress={() => navigation.openDrawer()}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        className="w-[38px] h-[38px] rounded-[10px] bg-white/10 items-center justify-center"
+                    >
+                        <Ionicons name="menu" size={22} color="#fff" />
+                    </TouchableOpacity>
+
+                    {/* App title */}
+                    <Text className="text-xl font-extrabold text-white tracking-[0.5px]">
+                        Attendly
+                    </Text>
+
+                    {/* Add class button */}
+                    <TouchableOpacity
+                        onPress={() => setModalVisible(true)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        className="w-[38px] h-[38px] rounded-[10px] bg-blue-500 items-center justify-center"
+                    >
+                        <Ionicons name="add" size={22} color="#fff" />
+                    </TouchableOpacity>
+                </View>
+
+                {/* Greeting row below */}
+                {storedUser && (
+                    <View className="mt-3.5">
+                        <Text className="text-[13px] text-slate-400">Welcome back,</Text>
+                        <Text className="text-[17px] font-bold text-white mt-0.5">
+                            {storedUser.name}
+                        </Text>
+                    </View>
+                )}
+            </View>
+
             {loadingClasses ? (
                 <View className="flex-1 justify-center items-center">
                     <ActivityIndicator size="large" color="blue" />
@@ -249,20 +334,17 @@ const Home = ({ navigation }) => {
                     <Text className="text-red-500 font-bold text-xl">No Classes Yet..</Text>
                 </View>
             ) : (
-                <View>
-                    <FlatList
-                        data={classes}
-                        keyExtractor={item => item.id}
-                        renderItem={({ item, index }) => (
-                            <RenderClass item={item} index={index} />
-                        )}
-                        className='mt-2 h-[92%]'
-                    />
-
-                </View>
+                <FlatList
+                    data={classes}
+                    keyExtractor={item => item.id}
+                    renderItem={({ item }) => <RenderClass item={item} />}
+                    numColumns={NUM_COLUMNS}
+                    contentContainerStyle={{ padding: CARD_MARGIN }}
+                    className="flex-1"
+                />
             )}
 
-        </View>
+        </SafeAreaView>
     );
 };
 

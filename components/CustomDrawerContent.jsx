@@ -1,19 +1,20 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth  } from '../firebase.config.js';
+import { auth } from '../firebase.config.js';
 import { ActivityIndicator } from 'react-native-paper';
-import useUserLoggedInState from 'zustand/store';
+import { useDispatch, useSelector } from 'react-redux';
+import { setLoggedIn, clearUser } from '../store/appSlice';
+import { logoutUser } from '../apiServices/authService';
 
 const CustomDrawerContent = (props) => {
-  const [storedUser, setStoredUser] = useState({})
-  const [loading, setLoading] = useState(true)
+  const dispatch = useDispatch();
+  const storedUser = useSelector(state => state.app.user);
   const navigation = useNavigation();
-
-  const { setUserState, checkUserState } = useUserLoggedInState();
 
   const handleLogout = async () => {
     Alert.alert('Warning',
@@ -21,15 +22,15 @@ const CustomDrawerContent = (props) => {
       [
         {
           text: 'Cancel',
-          style: 'cancel'
-
+          style: 'cancel',
         },
         {
           text: 'Ok',
           onPress: async () => {
-            await auth.signOut();
-            await AsyncStorage.removeItem('user')
-            setUserState(false)
+            await logoutUser();
+            await AsyncStorage.removeItem('user');
+            dispatch(setLoggedIn(false));
+            dispatch(clearUser());
             navigation.reset({
               index: 0,
               routes: [{ name: "Login" }],
@@ -37,65 +38,69 @@ const CustomDrawerContent = (props) => {
           }
         }
       ]
-    )
-
+    );
   };
-  useEffect(() => {
-    const getDetails = async () => {
-      try {
-        const stored = await AsyncStorage.getItem('user');
-        if (stored) {
-          const user = JSON.parse(stored);
-          setStoredUser(user)
-          setLoading(false)
-        }
 
-      } catch (e) {
-      }
-    };
-
-    getDetails();
-  }, []);
+  const getInitials = (name) => {
+    if (!name) return '?';
+    const words = name.trim().split(/\s+/);
+    if (words.length === 1) return words[0].substring(0, 2).toUpperCase();
+    return (words[0][0] + words[1][0]).toUpperCase();
+  };
 
   return (
-    <View className='flex-1'>
-      <DrawerContentScrollView {...props}>
-        {loading ? (
-          <View className='h-2/5 bg-slate-100 rounded-md mb-3 flex items-center justify-center'>
-            <ActivityIndicator size={'small'} color='blue' />
+    <SafeAreaView className="flex-1 bg-slate-50">
+      {/* Dark profile header */}
+      <View className="bg-[#1a1f36] pt-[52px] pb-6 px-5 rounded-br-[24px]">
+        {!storedUser ? (
+          <View className="h-20 items-center justify-center">
+            <ActivityIndicator size="small" color="#fff" />
           </View>
         ) : (
-          <View className='h-2/5 mb-3'>
-            <View className='flex flex-row items-center ml-3'>
-              <View className='w-14 h-14 bg-blue-300 flex items-center justify-center rounded-full mx-2'>
-                <Ionicons name='person-sharp' size={30} color={"#FFF"} />
-              </View>
-              <Text className='font-sens font-extrabold text-gray-500 '> {storedUser.name}</Text>
+          <>
+            {/* Avatar circle with initials */}
+            <View className="w-[60px] h-[60px] rounded-full bg-blue-500 items-center justify-center mb-3">
+              <Text className="text-white text-[22px] font-extrabold tracking-[0.5px]">{getInitials(storedUser.name)}</Text>
             </View>
-            <View className='w-full h-[0.4] bg-slate-500 mt-2'></View>
-            <Text className='font-sens font-extrabold text-gray-500 mt-2'>{storedUser.number}</Text>
-            <Text className='font-sens font-extrabold text-gray-500 mb-2'>{storedUser.email}</Text>
-            <View className='w-full h-[0.4] bg-slate-500 my-2'></View>
-          </View>
-        )
-        }
 
+            <Text className="text-[17px] font-bold text-white mb-[3px]">{storedUser.name}</Text>
+            <Text className="text-xs text-slate-400 mb-1.5">{storedUser.email}</Text>
+
+            {storedUser.number ? (
+              <View className="flex-row items-center gap-[5px]">
+                <Ionicons name="call-outline" size={13} color="#94a3b8" />
+                <Text className="text-xs text-slate-400 ml-1">{storedUser.number}</Text>
+              </View>
+            ) : null}
+          </>
+        )}
+      </View>
+
+      {/* Drawer navigation items */}
+      <DrawerContentScrollView
+        {...props}
+        contentContainerClassName="pt-2"
+      >
+        <View className="px-4 pt-4 pb-1">
+          <Text className="text-[11px] font-bold text-slate-400 tracking-[1.2px]">MENU</Text>
+        </View>
         <DrawerItemList {...props} />
       </DrawerContentScrollView>
 
-      <View className='mb-12 p-3'>
-        <View className='w-full h-[0.4] bg-slate-500 my-4'></View>
-
+      {/* Logout button at bottom */}
+      <View className="px-4 pb-8">
+        <View className="h-[1px] bg-slate-200 mb-3" />
         <TouchableOpacity
-          className='w-full h-10 flex rounded-md items-center justify-center bg-red-500 '
+          className="flex-row items-center bg-white border border-red-200 rounded-xl py-3 px-4"
           onPress={handleLogout}
+          activeOpacity={0.85}
         >
-          <Text className='text-white font-extrabold'>Logout</Text>
+          <Ionicons name="log-out-outline" size={20} color="#ef4444" className="mr-2.5" />
+          <Text className="text-red-500 font-bold text-[15px]">Logout</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
-}
-
+};
 
 export default CustomDrawerContent;

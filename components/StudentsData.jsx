@@ -1,11 +1,14 @@
 import React, { useLayoutEffect } from 'react'
-import { View, Text, FlatList, Button, Modal, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native'
+import { View, Text, FlatList, Modal, TextInput, TouchableOpacity, ActivityIndicator, Alert } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { useEffect, useState } from 'react'
 import { auth } from '../firebase.config.js';
-import { get, getDatabase, ref, push, set, update, remove } from 'firebase/database'
+import { getClassName, getStudents, addStudent, updateStudent, deleteStudent } from '../apiServices/studentService';
+import { getAttendance } from '../apiServices/attendanceService';
 import { useRoute } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
 import { Menu } from 'react-native-paper'
+
 const StudentsData = ({ navigation }) => {
     const [students, setStudents] = useState([])
     const [modalVisible, setModalVisible] = useState(false);
@@ -20,56 +23,62 @@ const StudentsData = ({ navigation }) => {
     const [updateStudentRollNo, setUpdateStudentRollNo] = useState('')
     const [updateModalVisible, setUpdateModalVisible] = useState(false)
     const [selectdId, setId] = useState('')
-    //getting id and subject name using props from ClassDAta Screen
+    //getting id and subject name using props from ClassData Screen
     const { classId, subjectId, subjectName } = useRoute().params
-    const db = getDatabase()
     const uid = auth.currentUser.uid
-
 
     const openItemMenu = (id) => setSelectedItemId(id)
     const closeItemMenu = () => setSelectedItemId(null)
-    //Header Setting
-    useLayoutEffect(() => {
-        navigation.setOptions({
-            title: 'Students',
-            headerRight: () => (
-                <TouchableOpacity onPress={() => setModalVisible(true)}>
-                    <Ionicons name='add-sharp' size={25} color={'#000'} />
-                </TouchableOpacity>
-            )
-        })
-    })
+
+    const getTodayDateStr = () => {
+        const d = new Date();
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}-${month}-${year}`;
+    };
+
+    const handleMarkAttendancePress = async () => {
+        try {
+            const today = getTodayDateStr();
+            const existing = await getAttendance(uid, classId, subjectId, today);
+            if (existing) {
+                Alert.alert(
+                    'Already Marked',
+                    `Attendance for today (${today}) has already been marked.`,
+                    [{ text: 'View Attendance', onPress: () => navigation.navigate('ShowAttendance', { subjectId, classId }) }]
+                );
+            } else {
+                navigation.navigate('MarkAttendance', { subjectId, classId, subjectName });
+            }
+        } catch (error) {
+            Alert.alert('Error', 'Could not check attendance. Please try again.');
+        }
+    };
+
+
+
     //UseEffect
     useEffect(() => {
         const fetchStudents = async () => {
             try {
-                const uid = auth.currentUser.uid;
                 if (!uid) {
                     return
                 }
-                const subjectSnapshot = await get(ref(db, `Users/${uid}/Classes/${classId}`));
-                if (subjectSnapshot.exists()) {
-                    setClassName(subjectSnapshot.val().className);
-                }
-                const snapshot = await get(ref(db, `Users/${uid}/Classes/${classId}/Subjects/${subjectId}/Students`))
-                if (snapshot.exists()) {
-                    const studentsArray = Object.entries(snapshot.val()).map(([key, value]) => ({
-                        id: key,
-                        ...value,
-                    }));
-                    setStudents(studentsArray)
-                    setLoading(false)
-                } else {
-                    setLoading(false)
-                }
+                const fetchedClassName = await getClassName(uid, classId);
+                setClassName(fetchedClassName);
+
+                const studentsArray = await getStudents(uid, classId, subjectId);
+                setStudents(studentsArray);
+                setLoading(false);
             } catch (error) {
                 Alert.alert('Warning', 'Something Went Wrong')
                 setLoading(false)
-
             }
         }
         fetchStudents();
-    }, [])
+    }, [classId, subjectId])
+
     //handle Submit
     const handleSubmit = async () => {
         if (!name || !roll) {
@@ -79,16 +88,13 @@ const StudentsData = ({ navigation }) => {
             return;
         }
         try {
-            const uid = auth.currentUser.uid;
-            const db = getDatabase();
-            const newStudentRef = push(ref(db, `Users/${uid}/Classes/${classId}/Subjects/${subjectId}/Students`));
             const studentData = {
                 Name: name,
                 RollNo: roll
             };
 
-            await set(newStudentRef, studentData);
-            setStudents((prev) => [...prev, { id: newStudentRef.key, ...studentData }]);
+            const newId = await addStudent(uid, classId, subjectId, studentData);
+            setStudents((prev) => [...prev, { id: newId, ...studentData }]);
             setName('');
             setRoll('');
             setLoadingSubmit(false)
@@ -96,43 +102,44 @@ const StudentsData = ({ navigation }) => {
 
         } catch (error) {
             Alert.alert('Error', ` Unable to add student's details`)
-
+        } finally {
+            setLoadingSubmit(false)
+            setLoadingAddMore(false)
         }
     };
-    const updateStudent = async (student) => {
+
+    const handleUpdateStudent = async (student) => {
         setId(student.id)
         closeItemMenu()
         setUpdateStudentName(student.Name);
         setUpdateStudentRollNo(student.RollNo);
         setUpdateModalVisible(true);
-
     }
-    const deleteStudent = async (studentId) => {
+
+    const deleteStudentItem = async (studentId) => {
         Alert.alert('Warning',
             'Are You sure you want to delete this Student?',
             [
                 {
                     text: 'Cancel',
-                    style: 'cancel'
-
+                    style: 'cancel',
                 },
                 {
                     text: 'Ok',
                     onPress: async () => {
-                        const uid = auth.currentUser.uid
-                        const deleteRef = ref(db, `Users/${uid}/Classes/${classId}/Subjects/${subjectId}/Students/${studentId}`)
-                        await remove(deleteRef)
+                        await deleteStudent(uid, classId, subjectId, studentId);
                         setStudents(prev => prev.filter(s => s.id !== studentId));
                     }
                 }
             ]
         )
     }
-    //Render Students   
-    const RenderStudents = ({ item, number }) => {
+
+    //Render Students
+    const renderStudentItem = React.useCallback(({ item, index }) => {
         return (
-            <View className="bg-white rounded-md flex-row flex justify-center items-center mb-2" style={{ borderBottomWidth: 0.3 }}>
-                <Text className='mx-3'>{number + 1}</Text>
+            <View className="bg-white rounded-md flex-row flex justify-center items-center mb-2 border-b-[0.3px] border-slate-200">
+                <Text className='mx-3'>{index + 1}</Text>
 
                 <View className="flex-1 mx-2 p-1 mb-1">
                     <Text className="text-sm font-sens font-semibold">{item.Name}</Text>
@@ -148,15 +155,15 @@ const StudentsData = ({ navigation }) => {
                         >
                             <Ionicons name="ellipsis-vertical" size={18} color="grey" />
                         </TouchableOpacity>
-
                     }
                 >
-                    <Menu.Item title='Update' onPress={() => updateStudent(item)} />
-                    <Menu.Item title='Delete' onPress={() => deleteStudent(item.id)} />
+                    <Menu.Item title='Update' onPress={() => handleUpdateStudent(item)} />
+                    <Menu.Item title='Delete' onPress={() => deleteStudentItem(item.id)} />
                 </Menu>
             </View>
         )
-    }
+    }, [selectedItemId, handleUpdateStudent, deleteStudentItem]);
+
     const handleUpdateSubmit = async () => {
         if (!updateStudentName.trim()) {
             alert('Please enter valid Student Name');
@@ -177,9 +184,7 @@ const StudentsData = ({ navigation }) => {
             return;
         }
 
-        const uid = auth.currentUser.uid
-        const updateRef = ref(db, `Users/${uid}/Classes/${classId}/Subjects/${subjectId}/Students/${selectdId}`)
-        await update(updateRef, { Name: updateStudentName, RollNo: updateStudentRollNo })
+        await updateStudent(uid, classId, subjectId, selectdId, { Name: updateStudentName, RollNo: updateStudentRollNo });
         setStudents(prev =>
             prev.map(s => s.id === selectdId ? { ...s, Name: updateStudentName, RollNo: updateStudentRollNo } : s)
         )
@@ -187,8 +192,32 @@ const StudentsData = ({ navigation }) => {
         setUpdateModalVisible(false)
         setUpdateStudentName('')
     }
+
     return (
-        <View className='flex-1'>
+        <SafeAreaView className='flex-1 bg-slate-50'>
+            {/* Custom Header */}
+            <View className="bg-[#1a1f36] flex-row items-center justify-between px-4 pt-4 pb-5 rounded-b-[24px] mb-2">
+                <TouchableOpacity
+                    onPress={() => navigation.goBack()}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    className="w-[38px] h-[38px] rounded-[10px] bg-white/10 items-center justify-center"
+                >
+                    <Ionicons name="arrow-back" size={22} color="#fff" />
+                </TouchableOpacity>
+
+                <Text className="text-[18px] font-bold text-white tracking-[0.3px]">
+                    Students
+                </Text>
+
+                <TouchableOpacity
+                    onPress={() => setModalVisible(true)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    className="w-[38px] h-[38px] rounded-[10px] bg-white/10 items-center justify-center"
+                >
+                    <Ionicons name="add" size={22} color="#fff" />
+                </TouchableOpacity>
+            </View>
+
             <Modal
                 animationType="slide"
                 transparent
@@ -257,13 +286,13 @@ const StudentsData = ({ navigation }) => {
                             <FlatList
                                 data={students}
                                 keyExtractor={(item) => item.id}
-                                renderItem={({ item, index }) => <RenderStudents item={item} number={index} />}
+                                renderItem={renderStudentItem}
                             />
                         </View>
                         <View className='flex-1 flex-row justify-center items-center'>
 
                             <View className='bg-white w-full h-28 absolute bottom-0 '>
-                                <TouchableOpacity className="top-0 mx-6 h-12 flex flex-row justify-center bg-blue-400  rounded-md mt-5 items-center" onPress={() => navigation.navigate('MarkAttendance', { uid, subjectId, classId, subjectName })}>
+                                <TouchableOpacity className="top-0 mx-6 h-12 flex flex-row justify-center bg-blue-400  rounded-md mt-5 items-center" onPress={handleMarkAttendancePress}>
                                     <Ionicons name='checkmark-done-outline' color={"#fff"} size={20} />
                                     <Text className="text-white ml-2 font-sens text-xl">
                                         Mark Attendance
@@ -339,7 +368,7 @@ const StudentsData = ({ navigation }) => {
                 </View>
             </Modal>
 
-        </View>
+        </SafeAreaView>
     )
 }
 

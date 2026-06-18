@@ -1,30 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const SettingsScreen = () => {
   return (
-    <View style={styles.container}>
-      <Text style={styles.text}>Settings Screen</Text>
-      <Text style={styles.subText}>This is where application settings will be managed.</Text>
-    </View>
-  );
+    <SafeAreaView className="flex-1 justify-center items-center">
+      <Text className="text-2xl font-bold">Settings Screen</Text>
+      <Text className="mt-2.5 text-base text-[#666]">This is where application settings will be managed.</Text>
+    </SafeAreaView>
+    );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  text: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  subText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
-  },
-});
 
 export default SettingsScreen;
