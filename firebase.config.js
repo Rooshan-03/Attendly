@@ -14,16 +14,20 @@ const firebaseConfig = {
   measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase with error handling for production builds
+let app;
+let auth;
+let database;
 
-// Initialize Auth with persistence
-const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage),
-});
-
-// Initialize Realtime Database
-const database = getDatabase(app);
+try {
+  app = initializeApp(firebaseConfig);
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage),
+  });
+  database = getDatabase(app);
+} catch (error) {
+  console.error("Firebase initialization error:", error);
+}
 
 export { auth, database };
 export default app;

@@ -136,7 +136,6 @@ const Home = ({ navigation }) => {
                 onPress={() => navigation.navigate('ClassData', { className: item.className, classId: item.id })}
                 activeOpacity={0.85}
             >
-                {/* Three-dot menu — top-right corner */}
                 <View className="absolute top-1.5 right-1 z-10">
                     <Menu
                         visible={selectedItemId === item.id}
@@ -156,7 +155,6 @@ const Home = ({ navigation }) => {
                     </Menu>
                 </View>
 
-                {/* Initials circle */}
                 <View
                     className="w-[52px] h-[52px] rounded-full items-center justify-center mb-2.5 mt-1"
                     style={{ backgroundColor: avatarColor }}
@@ -166,7 +164,6 @@ const Home = ({ navigation }) => {
                     </Text>
                 </View>
 
-                {/* Class name */}
                 <Text
                     className="text-sm font-semibold text-slate-800"
                     numberOfLines={2}

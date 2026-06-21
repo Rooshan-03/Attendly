@@ -1,0 +1,86 @@
+env: load .env
+env: export EXPO_PUBLIC_FIREBASE_API_KEY EXPO_PUBLIC_FIREBASE_APP_ID EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN EXPO_PUBLIC_FIREBASE_DATABASE_URL EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID EXPO_PUBLIC_FIREBASE_PROJECT_ID EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET
+Starting Metro Bundler
+
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+Failed to construct transformer:  Error: Duplicate plugin/preset detected.
+If you'd like to use two separate instances of a plugin,
+they need separate names, e.g.
+
+  plugins: [
+    ['some-plugin', {}],
+    ['some-plugin', {}, 'some unique name'],
+  ]
+
+Duplicates detected are:
+[
+  {
+    "alias": "/home/rooshan/Attendly/node_modules/react-native-worklets/plugin/index.js",
+    "dirname": "/home/rooshan/Attendly",
+    "ownPass": false,
+    "file": {
+      "request": "react-native-worklets/plugin",
+      "resolved": "/home/rooshan/Attendly/node_modules/react-native-worklets/plugin/index.js"
+    }
+  },
+  {
+    "alias": "/home/rooshan/Attendly/node_modules/react-native-reanimated/plugin/index.js",
+    "dirname": "/home/rooshan/Attendly",
+    "ownPass": false,
+    "file": {
+      "request": "react-native-reanimated/plugin",
+      "resolved": "/home/rooshan/Attendly/node_modules/react-native-reanimated/plugin/index.js"
+    }
+  }
+]
+    at assertNoDuplicates (/home/rooshan/Attendly/node_modules/@babel/core/lib/config/config-descriptors.js:183:13)
+    at createDescriptors (/home/rooshan/Attendly/node_modules/@babel/core/lib/config/config-descriptors.js:107:3)
+    at createDescriptors.next (<anonymous>)
+    at createPluginDescriptors (/home/rooshan/Attendly/node_modules/@babel/core/lib/config/config-descriptors.js:99:17)
+    at createPluginDescriptors.next (<anonymous>)
+    at /home/rooshan/Attendly/node_modules/@babel/core/lib/gensync-utils/functional.js:22:27
+    at Generator.next (<anonymous>)
+    at mergeChainOpts (/home/rooshan/Attendly/node_modules/@babel/core/lib/config/config-chain.js:349:34)
+    at mergeChainOpts.next (<anonymous>)
+    at chainWalker (/home/rooshan/Attendly/node_modules/@babel/core/lib/config/config-chain.js:316:14)
+    at chainWalker.next (<anonymous>)
+    at loadFileChain (/home/rooshan/Attendly/node_modules/@babel/core/lib/config/config-chain.js:191:24)
+    at loadFileChain.next (<anonymous>)
+    at mergeExtendsChain (/home/rooshan/Attendly/node_modules/@babel/core/lib/config/config-chain.js:328:28)
+    at mergeExtendsChain.next (<anonymous>)
+    at chainWalker (/home/rooshan/Attendly/node_modules/@babel/core/lib/config/config-chain.js:312:20)
+    at chainWalker.next (<anonymous>)
+    at buildRootChain (/home/rooshan/Attendly/node_modules/@babel/core/lib/config/config-chain.js:56:36)
+    at buildRootChain.next (<anonymous>)
+    at loadPrivatePartialConfig (/home/rooshan/Attendly/node_modules/@babel/core/lib/config/partial.js:72:62)
+    at loadPrivatePartialConfig.next (<anonymous>)
+    at loadPartialConfig (/home/rooshan/Attendly/node_modules/@babel/core/lib/config/partial.js:115:25)
+    at loadPartialConfig.next (<anonymous>)
+    at evaluateSync (/home/rooshan/Attendly/node_modules/gensync/index.js:251:28)
+    at sync (/home/rooshan/Attendly/node_modules/gensync/index.js:89:14)
+    at stopHiding - secret - don't use this - v1 (/home/rooshan/Attendly/node_modules/@babel/core/lib/errors/rewrite-stack-trace.js:47:12)
+    at loadPartialConfigSync (/home/rooshan/Attendly/node_modules/@babel/core/lib/config/index.js:37:84)
+    at Object.getCacheKey (/home/rooshan/Attendly/node_modules/expo/node_modules/@expo/metro-config/build/babel-transformer.js:190:66)
+    at Object.getCacheKey (/home/rooshan/Attendly/node_modules/expo/node_modules/@expo/metro-config/build/transform-worker/metro-transform-worker.js:643:28)
+    at getTransformCacheKey (/home/rooshan/Attendly/node_modules/metro/src/DeltaBundler/getTransformCacheKey.js:17:19)
+    at new Transformer (/home/rooshan/Attendly/node_modules/metro/src/DeltaBundler/Transformer.js:40:43)
+    at /home/rooshan/Attendly/node_modules/metro/src/Bundler.js:25:29
+
+warn - The class `shadow-[#1a1f36]` is ambiguous and matches multiple utilities.
+warn - If this is content and not a class, replace it with `shadow-&lsqb;#1a1f36&rsqb;` to silence this warning.
+
+
+warn - The class `shadow-[#1a1f36]` is ambiguous and matches multiple utilities.
+warn - If this is content and not a class, replace it with `shadow-&lsqb;#1a1f36&rsqb;` to silence this warning.
+
+
+warn - The class `shadow-[#1a1f36]` is ambiguous and matches multiple utilities.
+warn - If this is content and not a class, replace it with `shadow-&lsqb;#1a1f36&rsqb;` to silence this warning.
+
+
+warn - The class `shadow-[#1a1f36]` is ambiguous and matches multiple utilities.
+warn - If this is content and not a class, replace it with `shadow-&lsqb;#1a1f36&rsqb;` to silence this warning.
+
+Android Bundling failed 3135ms node_modules/expo/AppEntry.js (1 module)
+
+TypeError: Cannot read properties of undefined (reading 'transformFile')

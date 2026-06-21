@@ -26,10 +26,8 @@ function HomeDrawerNavigator() {
   return (
     <Drawer.Navigator
       initialRouteName="Home"
-      // Use the custom component for the drawer content
       drawerContent={(props) => <CustomDrawerContent {...props} />}
     >
-      {/* Screens that will appear in the Drawer Menu */}
       <Drawer.Screen
         name="Home"
         component={Home}
@@ -71,11 +69,6 @@ export default function App() {
                 component={Signup}
                 options={{ title: 'Signup', headerShown: false }}
               />
-
-              {/* 
-              The 'HomeDrawer' screen is the entry point to the main application flow.
-              It is a Stack Screen that holds the Drawer Navigator.
-            */}
               <Stack.Screen
                 name='HomeDrawer'
                 component={HomeDrawerNavigator}

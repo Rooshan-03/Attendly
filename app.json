@@ -15,7 +15,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/AppIcon.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.rooshan.attendly"
@@ -26,10 +26,6 @@
       "resizeMode": "contain",
       "backgroundColor": "#1a1f36"
     },
-    "androidStatusBar": {
-      "backgroundColor": "#1a1f36",
-      "barStyle": "light-content"
-    },
     "extra": {
       "eas": {
         "projectId": "e5524f68-7b0a-4c89-a1f6-86b17b4bc745"
@@ -37,7 +33,24 @@
     },
     "plugins": [
       "expo-font",
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/AppIcon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#1a1f36"
+        }
+      ],
+      [
+        "expo-status-bar",
+        {
+          "style": "light",
+          "backgroundColor": "#1a1f36",
+          "translucent": false
+        }
+      ]
     ],
     "experiments": {
       "tsconfigPaths": true

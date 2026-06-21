@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Image, Text, Animated, ActivityIndicator, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppIcon from '../assets/AppIcon.png';
@@ -8,8 +8,8 @@ const SplashScreen = ({ navigation }) => {
     const isLoggedIn = useSelector(state => state.app.isLoggedIn);
 
     // Animation values
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const scaleAnim = useRef(new Animated.Value(0.9)).current;
+    const [fadeAnim] = useState(() => new Animated.Value(0));
+    const [scaleAnim] = useState(() => new Animated.Value(0.9));
 
     useEffect(() => {
         // Start animation
